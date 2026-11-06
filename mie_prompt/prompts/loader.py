@@ -1,7 +1,7 @@
 """External system-prompt loader for the core.
 
 Prompts live as plain ``.txt`` / ``.json`` files under this package directory
-(``mie_core/prompts/``). Text files are returned **verbatim** — placeholders
+(``mie_prompt/prompts/``). Text files are returned **verbatim** — placeholders
 like ``{}``, ``{prompt}``, ``{image_num}`` survive untouched so callers can
 ``.format()`` / ``.replace()`` exactly as they did when prompts were inline
 string constants. The loader never applies ``.format()``.
