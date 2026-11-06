@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "comfyui-mie-prompt"
 description = "Mie's prompt layer: the H3 and storyboard prompt templates, the external prompt loader, and the prompt families."
-version = "0.1.2"
+version = "0.1.3"
 license = "GPL-3.0"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "comfyui-mie-llm>=0.1.1",
+    "comfyui-mie-llm>=0.1.2",
 ]
 
 [tool.setuptools]
