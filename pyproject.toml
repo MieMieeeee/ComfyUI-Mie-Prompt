@@ -10,7 +10,7 @@ license = "GPL-3.0"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "comfyui-mie-llm>=0.1.0",
+    "comfyui-mie-llm>=0.1.1",
 ]
 
 [tool.setuptools]
