@@ -55,6 +55,12 @@ non_diegetic_music:
     never mine a character portrait's background (its classroom window,
     waterfront, studio wall) as the environment; an identity picture is
     an identity reference, nothing more.
+  - Video motion slots -> `attribute_transfer - choreography and
+    timing`: the reference's performance and its timing transfer to
+    THIS clip's own cast and setting; identity, wardrobe, environment,
+    and camera are NOT transferred. A performance that plays out over
+    time is never `partially_preserved` — the transfer is whole or
+    absent, never partial.
   - Every <Picture> / <Subject> label used in this scene MUST appear
     here.
 - detailed_description:
