@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "comfyui-mie-prompt"
 description = "Mie's prompt layer: the H3 and storyboard prompt templates, the external prompt loader, and the prompt families."
-version = "0.1.6"
+version = "0.1.7"
 license = "GPL-3.0"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -20,4 +20,4 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"mie_prompt.prompts" = ["h3/*", "h3_loop/*", "h3_storyboard/*"]
+"mie_prompt.prompts" = ["h3/*", "h3_loop/*", "h3_storyboard/*", "qwen_image_21/*", "ideogram4/*"]
