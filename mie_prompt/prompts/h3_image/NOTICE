@@ -1,0 +1,46 @@
+MiniMax-H3-Image is licensed under the MiniMax-H3-Image Community License
+Agreement, Copyright © 2026 MiniMax. All Rights Reserved.
+
+The files listed below are official MiniMax artifacts, copied byte for byte.
+They are covered by that agreement -- NOT by this package's GPL-3.0 licence
+-- and must not be edited.
+
+  _pe_t2i_system.txt            MiniMaxAI/MiniMax-H3-Image-PE
+                                prompt/t2i/system_prompt.txt
+  _pe_t2i_task.txt              MiniMaxAI/MiniMax-H3-Image-PE
+                                prompt/t2i/task_prompt.txt
+  _pe_t2i_request_params.json   MiniMaxAI/MiniMax-H3-Image-PE
+                                prompt/t2i/request_params.json
+  _pe_edit_task.txt             MiniMaxAI/MiniMax-H3-Image-PE
+                                prompt/edit/task_prompt.txt
+  _skill_main.md                MiniMax-AI/MiniMax-H3-Image
+                                skills/h3-image-prompt-writing/SKILL.md
+  _skill_t2i.txt                MiniMax-AI/MiniMax-H3-Image
+                                skills/h3-image-prompt-writing/references/t2i-en.txt
+  _skill_edit.txt               MiniMax-AI/MiniMax-H3-Image
+                                skills/h3-image-prompt-writing/references/edit-en.txt
+
+A copy of the agreement ships next to this file as
+`_LICENSE-MiniMax-H3-Image.txt`
+(sha256 0ec3bb5e6d9e885fa2aaf15e84689e50fd51f42b53fa24d3a64ed9d8c76d423b).
+
+Provenance, digests and the upstream links are in `UPSTREAM.md`; the modes,
+the output contract and the worked examples are in `modes.md` and
+`examples.md`.
+
+Notes for redistributors:
+
+* The agreement's "Applicable Territory" is the world EXCEPT the European
+  Union, the United Kingdom, the Republic of Korea and the United States of
+  America. Section V.4 forbids using, copying, modifying, distributing or
+  displaying the MiniMax-H3-Image Works -- or their outputs -- outside that
+  territory.
+* Section IV.1 requires a separate written authorisation from MiniMax
+  (https://platform.minimax.io/console/license) when the licensee's
+  annualised revenue, including affiliates, exceeds USD 1,000,000, or when
+  a hosted service is offered to third parties.
+* Section IV.2 requires a commercial product or service that uses these
+  works to display "MiniMax-H3-Image" on its user interface.
+
+The H3-Image node in this package is a "Powered by MiniMax-H3-Image" path:
+its guide modes drive the official prompt-writing guidance.

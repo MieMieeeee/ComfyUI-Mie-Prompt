@@ -19,8 +19,11 @@ packages = [
     "mie_prompt.prompts",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
 [tool.setuptools.package-data]
 "mie_prompt.prompts" = ["h3/*", "h3_loop/*", "h3_storyboard/*", "qwen_image_21/*", "ideogram4/*", "bernini/*", "flux3_klein/*",
  "krea2/*", "ltx25/*", "scail2/*", "flux2/*", "flux_klein/*",
- "hunyuan/*", "kontext/*", "ltx2/*", "moss_image/*",
+ "hunyuan/*", "kontext/*", "ltx2/*", "moss_image/*", "h3_image/*",
  "prompt_generator/*", "translator/*", "frame_transition/*", "zimage/*"]

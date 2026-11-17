@@ -40,6 +40,12 @@ jobs:
           python -m pip install --upgrade pip build
           python -m build --wheel
 
+      - name: Tests
+        shell: bash
+        run: |
+          python -m pip install "pytest>=7"
+          python -m pytest tests/ -q
+
       - name: Self-test
         shell: bash
         run: python selftest.py

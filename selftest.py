@@ -22,6 +22,14 @@ def main() -> int:
     assert prompt_path("h3_loop/shot_system_addendum.txt").is_file()
     assert prompt_path("h3_storyboard/system_asset.txt").is_file()
 
+    # The H3-Image family: the official files are there and the helpers load.
+    from mie_prompt import h3_image_prompts
+    assert prompt_path("h3_image/_pe_t2i_system.txt").is_file()
+    assert prompt_path("h3_image/_pe_edit_task.txt").is_file()
+    assert prompt_path("h3_image/NOTICE").is_file()
+    assert h3_image_prompts.load_system_prompt()
+    assert h3_image_prompts.build_user_message("t2i", "a red cup")
+
     print(PACKAGE, "self-test passed")
     return 0
 
