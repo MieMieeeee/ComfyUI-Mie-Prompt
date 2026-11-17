@@ -20,4 +20,5 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"mie_prompt.prompts" = ["h3/*", "h3_loop/*", "h3_storyboard/*", "qwen_image_21/*", "ideogram4/*"]
+"mie_prompt.prompts" = ["h3/*", "h3_loop/*", "h3_storyboard/*", "qwen_image_21/*", "ideogram4/*", "bernini/*", "flux3_klein/*",
+ "krea2/*", "ltx25/*", "scail2/*"]
