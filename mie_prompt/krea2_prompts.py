@@ -11,15 +11,8 @@ one system prompt, one user template, one resolver.
 """
 from __future__ import annotations
 
-try:
-    from _mienodes_internal.nodes.llm.prompts.loader import load_prompt_text
-except ImportError:
-    from .prompts.loader import load_prompt_text
-
-try:
-    from _mienodes_internal.nodes.common.aspect_ratio import normalize_ratio_string
-except ImportError:
-    from .aspect_ratio import normalize_ratio_string
+from .prompts.loader import load_prompt_text
+from .aspect_ratio import normalize_ratio_string
 
 
 # --------------------------------------------------------------------------- #

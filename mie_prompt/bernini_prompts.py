@@ -24,10 +24,7 @@ The mode-specific response parsing and media-frame handling live in
 
 import re
 
-try:
-    from _mienodes_internal.nodes.llm.prompts.loader import load_prompt_dict, load_prompt_text
-except ImportError:
-    from .prompts.loader import load_prompt_dict, load_prompt_text
+from .prompts.loader import load_prompt_dict, load_prompt_text
 
 # Display strings shown in the task_type dropdown. Format: "code - 中文".
 # The short code is what routing / JSON_MODE_TASKS / SYSTEM_PROMPTS use,

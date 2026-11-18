@@ -31,10 +31,7 @@ from __future__ import annotations
 import json
 import re
 
-try:
-    from _mienodes_internal.nodes.llm.prompts.loader import load_prompt_dict
-except ImportError:
-    from .prompts.loader import load_prompt_dict
+from .prompts.loader import load_prompt_dict
 
 
 # Ordered dropdown entries shown in the node menu, bilingual

@@ -52,18 +52,8 @@ import re
 from dataclasses import dataclass
 from math import gcd
 
-try:
-    from _mienodes_internal.nodes.llm.prompts.loader import (
-        load_prompt_dict,
-        load_prompt_text,
-    )
-except ImportError:
-    from .prompts.loader import load_prompt_dict, load_prompt_text
-
-try:
-    from _mienodes_internal.nodes.common.aspect_ratio import ratio_from_size
-except ImportError:
-    from .aspect_ratio import ratio_from_size
+from .prompts.loader import load_prompt_dict, load_prompt_text
+from .aspect_ratio import ratio_from_size
 
 
 # --------------------------------------------------------------------------- #
@@ -396,10 +386,7 @@ def load_skill_main() -> str:
     It is a Markdown file, so it does not go through the ``.txt`` loader;
     it is read from the family folder directly.
     """
-    try:
-        from _mienodes_internal.nodes.llm.prompts import prompt_path
-    except ImportError:
-        from .prompts import prompt_path
+    from .prompts import prompt_path
 
     path = prompt_path("h3_image/_skill_main.md")
     return path.read_text(encoding="utf-8")

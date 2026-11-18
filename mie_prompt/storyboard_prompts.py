@@ -30,13 +30,7 @@ import math
 import re
 from typing import Any, Optional
 
-try:
-    from _mienodes_internal.core.utils import mie_log
-except ImportError:
-    try:
-        from mie_llm.utils import mie_log
-    except ImportError:
-        from mie_llm.utils import mie_log
+from mie_llm.utils import mie_log
 
 from .h3_prompts import (
     CATEGORIES,

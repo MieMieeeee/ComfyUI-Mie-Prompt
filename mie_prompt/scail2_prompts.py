@@ -20,10 +20,7 @@ to keep the Python surface small.
 """
 from __future__ import annotations
 
-try:
-    from _mienodes_internal.nodes.llm.prompts.loader import load_prompt_text
-except ImportError:
-    from .prompts.loader import load_prompt_text
+from .prompts.loader import load_prompt_text
 
 
 # --------------------------------------------------------------------------- #
