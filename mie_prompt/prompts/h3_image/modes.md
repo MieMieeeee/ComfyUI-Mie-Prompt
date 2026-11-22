@@ -29,19 +29,23 @@ Two facts the node must respect:
 
 ## 2. Modes
 
-Four modes, single-select dropdown, mutually exclusive.
+Two modes, single-select dropdown, mutually exclusive. The mode axis is the
+task axis — it mirrors the two official templates one to one. There is no
+separate reference-generation template: the edit task natively takes the
+picture being edited plus up to 16 reference images, so "参考生图" is `edit`.
 
 | code | display (zh / en) | what it does | LLM call | official artifact |
 |---|---|---|---|---|
 | `t2i` | 文生图增强 / Text-to-image | short brief → English caption **+ aspect ratio** (JSON) | yes | `_pe_t2i_task.txt` + `_pe_t2i_system.txt` |
 | `edit` | 图像编辑增强 / Image edit | short edit instruction + reference images → English caption **+ target ratio** (JSON) | yes (multimodal) | `_pe_edit_task.txt` + `_pe_t2i_system.txt` |
-| `t2i_guide` | 文生图·写作指南 / T2I guide | short brief → free-text prompt block, **no JSON** | yes | `_skill_t2i.txt` (+ `_skill_main.md`) |
-| `edit_guide` | 图像编辑·写作指南 / Edit guide | short edit instruction + reference images → free-text prompt block | yes (multimodal) | `_skill_edit.txt` (+ `_skill_main.md`) |
 
-**Minimum viable build = `t2i` + `edit`.** The two `_guide` modes are the
-official skill path and cover the most common community complaint (the bundled
-3.5-9B PE is slow, drops to CPU on small VRAM, and drags the image style with
-it — see `examples.md` § community findings).
+> 2026-11-22 (user ruling): the `t2i_guide` / `edit_guide` modes were removed
+> from the dropdown. They drove the official prompt-writing skill
+> (`_skill_t2i.txt` / `_skill_edit.txt` + `_skill_main.md`, free text plus an
+> `Aspect ratio: W:H` line) — the same task with a different output format,
+> which read as a second task axis and confused users. The skill files stay
+> shipped verbatim as reference material; the code that composed them into
+> system prompts and parsed their replies was deleted with the modes.
 
 ### `t2i` mode
 
@@ -102,29 +106,15 @@ edited and the rest are references. The LLM needs them because the edit prompt
 requires the model to *look* at the sources (`<Picture N>`, `<Subject N>`,
 transcribed source text). A text-only model cannot run the `edit` mode.
 
-### `_guide` modes
+### The retired `_guide` path (reference only)
 
-`_skill_t2i.txt` / `_skill_edit.txt` are writing guides with worked examples,
-not JSON-producing prompts. Output is free text.
+The official skill files remain shipped and are still worth reading as
+prompt-writing reference:
 
-`_skill_main.md` (SKILL.md) defines the output format for these modes:
-
-> Give the prompt in a text block, followed by the aspect ratio:
-> `Aspect ratio: 3:4`
->
-> "Write the description in English. Text that appears in the image keeps its
-> own language."
-
-So the `_guide` modes' contract is:
-
-```
-<prompt paragraph(s)>
-Aspect ratio: W:H
-```
-
-Aspect ratio rules from SKILL.md: between 1:3 and 3:1; keep a user-given ratio;
-otherwise use the nearest allowed one and say so if it is out of range; for an
-edit that keeps the input's framing, use the input's ratio.
+- `_skill_main.md` (SKILL.md): the writing rules — task before style, quote
+  every word that appears, get the data right, grids by rows and columns;
+  ratios between 1:3 and 3:1.
+- `_skill_t2i.txt` / `_skill_edit.txt`: the guides with worked examples.
 
 Note the tag convention the guides use: the **user side** refers to inputs as
 `@Picture 1` (`edit-en.txt` examples: *"Reference image: `@Picture 1` shows a
@@ -184,8 +174,8 @@ on the LLM) or **P** = preference (system prompt only).
 |---|---|
 | User draft | Free-form: a sentence, a paragraph, multi-line. Any language (Chinese is the normal case). |
 | Verbatim contract | Text inside single or double quotes is preserved character-for-character (H7). The guides use both `'` and `"`; treat both as literal. |
-| Images | `edit` / `edit_guide`: 0–16 reference images, official hard limit 16. Node default cap **8** (the ComfyUI-side prompt-assist nodes top out around 9), exposed as a control. `t2i` / `t2i_guide`: no image needed; an optional image may be used as a *reference description* source (phase 2). |
-| Aspect-ratio control | `t2i` / `t2i_guide`: `adaptive` + the ten official values only — matches the PE's own enum. `edit` / `edit_guide`: `adaptive` + **any** positive-integer W:H — the edit PE explicitly refuses a preset list. |
+| Images | `edit`: 0–16 reference images, official hard limit 16. Node default cap **8** (the ComfyUI-side prompt-assist nodes top out around 9), exposed as a control. `t2i`: no image needed; an optional image may be used as a *reference description* source (phase 2). |
+| Aspect-ratio control | `t2i`: `adaptive` + the ten official values only — matches the PE's own enum. `edit`: `adaptive` + **any** positive-integer W:H — the edit PE explicitly refuses a preset list. |
 | Seed | Provide a seed control so the same draft + same seed reproduces the same enhancement. The upstream PE is non-deterministic across runs; the node cannot promise bit-identical output, but a fixed seed + fixed model is the best available lever. |
 | Output ports | `prompt` (STRING), `aspect_ratio` (STRING), `raw_reply` (STRING, for debugging), and for `edit` a `subjects` count or the `<Subject N>` list is optional — not required for v1. |
 

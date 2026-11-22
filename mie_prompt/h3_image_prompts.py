@@ -19,28 +19,22 @@ never edited (see ``prompts/h3_image/UPSTREAM.md`` for the sha256 digests):
                                   text part of a multi-part user message, and
                                   every image is preceded by its own
                                   "Reference Media: <Picture N> ..." part.
-* ``_skill_t2i.txt`` / ``_skill_edit.txt`` / ``_skill_main.md`` -- the official
-                                  prompt-writing skill, used by the two
-                                  ``_guide`` modes.
 
-Four modes, single-select dropdown:
+Two modes, single-select dropdown -- the task axis mirrors the two official
+templates (there is no separate reference-generation template: the edit task
+natively takes the picture being edited plus up to 16 reference images):
 
 ======================  ==========================================  ==========
 code                    what it does                                LLM
 ======================  ==========================================  ==========
 ``t2i``                 short brief -> English caption + ratio     yes
 ``edit``                edit instruction + references -> caption     yes (vision)
-``t2i_guide``           short brief -> free-text prompt block       yes
-``edit_guide``          edit instruction + references -> prompt      yes (vision)
 ======================  ==========================================  ==========
 
-The two JSON modes are the ones the official PE drives, so they are the
-contract that matters; the ``_guide`` modes are the official skill path and
-cover the common complaint that the bundled PE is slow and drags the style
-along. The guide modes emit free text plus an ``Aspect ratio: W:H`` line, per
-the official skill's output format -- that format block is lifted verbatim
-out of ``_skill_main.md`` at runtime, so this module authors no prompt text
-of its own.
+The official prompt-writing skill (``_skill_t2i.txt`` / ``_skill_edit.txt`` /
+``_skill_main.md``) stays shipped verbatim as reference material; the
+``_guide`` modes that once drove it were removed from the dropdown on
+2026-11-22 (user ruling: the mode axis is the task axis).
 
 Everything here is deterministic and connector-free: no torch, no ComfyUI,
 no network. The node layer wires the sockets and makes the call.
@@ -65,28 +59,21 @@ from .aspect_ratio import ratio_from_size
 MODES: tuple[str, ...] = (
     "t2i - 文生图增强",
     "edit - 图像编辑增强",
-    "t2i_guide - 文生图·写作指南",
-    "edit_guide - 图像编辑·写作指南",
 )
 
 MODE_CODES: tuple[str, ...] = (
     "t2i",
     "edit",
-    "t2i_guide",
-    "edit_guide",
 )
 
-# The two modes whose contract is a JSON object with two string values.
+# Both modes' contract is a JSON object with two string values (kept as a
+# named constant because the reply parser is written against it).
 JSON_MODES = frozenset({"t2i", "edit"})
 
-# The two modes that follow the official prompt-writing skill: free text plus
-# an "Aspect ratio: W:H" line.
-GUIDE_MODES = frozenset({"t2i_guide", "edit_guide"})
-
-# Modes that need the LLM to *see* the reference images. A text-only model
+# The modes that need the LLM to *see* the reference images. A text-only model
 # cannot run them: the official edit prompt requires the model to look at the
 # sources (<Picture N>, <Subject N>, transcribed source text).
-IMAGE_MODES = frozenset({"edit", "edit_guide"})
+IMAGE_MODES = frozenset({"edit"})
 
 # The official reference-image ceiling (the skill says "up to 16 reference
 # images"). The node default is lower -- see modes.md -- and this module
@@ -111,11 +98,8 @@ _SYSTEM_PROMPT = "h3_image/_pe_t2i_system"
 _TASK_PROMPTS: dict[str, str] = {
     "t2i": "h3_image/_pe_t2i_task",
     "edit": "h3_image/_pe_edit_task",
-    "t2i_guide": "h3_image/_skill_t2i",
-    "edit_guide": "h3_image/_skill_edit",
 }
 _REQUEST_PARAMS = "h3_image/_pe_t2i_request_params"
-_SKILL_MAIN = "h3_image/_skill_main.md"
 
 
 def load_system_prompt() -> str:
@@ -190,11 +174,6 @@ DEFAULT_TEMPERATURE = 1.0
 DEFAULT_MAX_TOKENS = 16384
 MAX_TOKENS_CEILING = 32768
 
-# The guide modes' ratio range, from the official skill: "width:height
-# between 1:3 and 3:1".
-GUIDE_RATIO_MIN = 1.0 / 3.0
-GUIDE_RATIO_MAX = 3.0
-
 
 # --------------------------------------------------------------------------- #
 # Message building
@@ -208,9 +187,6 @@ def build_user_message(mode: str, user_text: str) -> str:
     braces -- the official ``expand_prompt.py`` does exactly this, so
     ``.format()`` is the contract, not ``.replace()``.
 
-    The guide modes carry their instructions in the SYSTEM message (the
-    writing guide), so the user turn is the draft itself.
-
     ``edit`` is never built here: its prompt has no slot, and the
     instruction travels in the last text part of a multi-part message --
     see :func:`build_user_content`.
@@ -223,13 +199,6 @@ def build_user_message(mode: str, user_text: str) -> str:
                 "enhance / prompt 为空，无内容可增强"
             )
         return load_task_prompt(mode).format(text)
-    if mode in GUIDE_MODES:
-        if not text:
-            raise ValueError(
-                "H3Image: the prompt is empty; there is nothing to "
-                "enhance / prompt 为空，无内容可增强"
-            )
-        return text
     raise ValueError(
         f"H3Image: mode {mode!r} has no single-part user message; use "
         f"build_user_content"
@@ -277,10 +246,10 @@ def build_user_content(
 ) -> str | list[dict]:
     """The user turn for ``mode``.
 
-    Text-only modes (``t2i``, ``t2i_guide``) return a plain string. The
-    image modes return an OpenAI-style content list, because the official
-    edit prompt requires the interleaved shape: a "Reference Media" text
-    part, then the image it describes, and the instruction last.
+    The text-only mode (``t2i``) returns a plain string. The image mode
+    returns an OpenAI-style content list, because the official edit prompt
+    requires the interleaved shape: a "Reference Media" text part, then the
+    image it describes, and the instruction last.
     """
     urls = list(image_urls or [])
     if mode not in IMAGE_MODES:
@@ -320,99 +289,18 @@ def build_user_content(
     return parts
 
 
-def load_guide_output_contract() -> str:
-    """The official skill's output-format section, lifted verbatim.
-
-    The ``_guide`` modes produce free text plus an ``Aspect ratio: W:H``
-    line. That contract is written in the official ``SKILL.md``; the section
-    is read out of the shipped file instead of being retyped, so this module
-    authors no prompt text. The skill's API-rendering sections are not part
-    of it -- rendering is the image workflow's job, not this node's.
-    """
-    return _skill_section("Output format")
-
-
-def load_writing_rules() -> str:
-    """The official skill's writing rules, lifted verbatim.
-
-    These are the rules the guide modes must follow: task before style,
-    quote every word that appears, get the data right, name the inputs,
-    separate what changes from what stays, grids by rows and columns.
-    """
-    return _skill_section("Writing rules")
-
-
-def _skill_section(title: str) -> str:
-    """One ``##`` section of the official ``SKILL.md``, verbatim."""
-    text = load_skill_main()
-    match = re.search(
-        rf"^##\s+{re.escape(title)}\s*$([\s\S]*?)(?=^##\s|\Z)", text, re.MULTILINE
-    )
-    if not match:
-        return ""
-    body = match.group(1).strip()
-    # Drop the outer fence the skill uses to show the format, when the
-    # section opens with one. The example inside it stays: it is the
-    # official illustration of the format.
-    body = re.sub(r"^`{3,4}[a-z]*\s*\n", "", body)
-    body = re.sub(r"\n`{3,4}\s*$", "", body)
-    return body.strip()
-
-
-def load_guide_prompt(mode: str) -> str:
-    """The official writing guide for ``mode``, without its worked examples.
-
-    The guide files end with an ``## Examples`` section: finished prompts
-    for a pendant photograph, a data dashboard and so on. They are the
-    reference an agent reads before writing, not the instruction the model
-    is given -- and a model that sees them imitates THEM instead of the
-    user's brief (verified live on 2026-11-17: a coffee-poster brief came
-    back as the guide's pendant photograph, and the user's quoted title
-    was dropped). The rules above the examples are the instruction; the
-    examples are reference, so the node sends the rules and not the
-    gallery.
-
-    The file itself stays byte-identical on disk; this is a runtime
-    composition, and nothing is edited.
-    """
-    text = load_task_prompt(mode)
-    head = re.split(r"^##\s+Examples\s*$", text, maxsplit=1, flags=re.MULTILINE)[0]
-    return head.strip()
-
-
-def load_skill_main() -> str:
-    """The official ``SKILL.md``, verbatim.
-
-    It is a Markdown file, so it does not go through the ``.txt`` loader;
-    it is read from the family folder directly.
-    """
-    from .prompts import prompt_path
-
-    path = prompt_path("h3_image/_skill_main.md")
-    return path.read_text(encoding="utf-8")
-
-
 def build_system_prompt(mode: str) -> str:
     """The system message for ``mode``.
 
-    The two JSON modes use MiniMax's single official system prompt. The two
-    guide modes use the official writing rules, the official writing guide
-    (without its example gallery) and the official output format -- all
-    three lifted verbatim out of the shipped files.
+    Both modes use MiniMax's single official system prompt (published for
+    t2i; the ComfyUI edit template reuses the same file).
     """
-    if mode in JSON_MODES:
-        return load_system_prompt()
-    blocks: list[str] = []
-    rules = load_writing_rules()
-    if rules:
-        blocks.append("## Writing rules\n\n" + rules)
-    guide = load_guide_prompt(mode)
-    if guide:
-        blocks.append(guide)
-    contract = load_guide_output_contract()
-    if contract:
-        blocks.append("## Output format\n\n" + contract)
-    return "\n\n".join(blocks)
+    if mode not in JSON_MODES:
+        raise ValueError(
+            f"H3Image: unknown mode {mode!r}; expected one of "
+            f"{', '.join(MODE_CODES)}"
+        )
+    return load_system_prompt()
 
 
 def build_messages(
@@ -425,7 +313,7 @@ def build_messages(
 ) -> list[dict]:
     """The full chat payload for one H3-Image enhancement call.
 
-    ``t2i`` is a plain [system, user] pair. The image modes carry the
+    ``t2i`` is a plain [system, user] pair. The edit mode carries the
     interleaved user content the official edit prompt asks for.
     """
     content = build_user_content(
@@ -508,9 +396,9 @@ def strip_reasoning(text: str) -> str:
     and habitually fences it. Both are removed here so the parser only ever
     sees the object.
 
-    The fence *markers* go, their content stays: the guide modes put the
-    ``Aspect ratio:`` line after the fenced prompt block, and dropping
-    everything outside the first fence would lose it.
+    The fence *markers* go, their content stays: a reply may carry prose
+    around the fenced object, and dropping everything outside the first
+    fence would lose it.
     """
     out = _THINK_BLOCK_RE.sub("", text or "")
     out = _OPEN_THINK_RE.sub("", out)
@@ -866,127 +754,6 @@ def parse_expansion_reply(
             "H3Image: the caption writes a grid as '2x3'; name the rows and "
             "the columns / 网格应写明行列"
         )
-
-    return Expansion(
-        caption=caption,
-        aspect_ratio=ratio,
-        raw=raw or "",
-        warnings=tuple(warnings),
-        missing_literals=tuple(lost),
-    )
-
-
-_GUIDE_RATIO_RE = re.compile(
-    r"^\s*\**\s*Aspect ratio:\s*\**\s*(.+?)\s*$",
-    re.MULTILINE,
-)
-
-# The ratio a model writes after "Aspect ratio:": "5:4", "5 / 4" or the
-# LaTeX fraction "\frac{5}{4}" -- all three show up in practice.
-_RATIO_TEXT_RE = re.compile(
-    r"(?:\\frac\s*\{\s*(\d+)\s*\}\s*\{\s*(\d+)\s*\})"
-    r"|(?:(\d+)\s*[:：/]\s*(\d+))"
-)
-
-
-def _ratio_from_text(text: str) -> str:
-    """``"5:4"`` / ``"5 / 4"`` / ``"\\frac{5}{4}"`` -> ``"5:4"``; ``""`` if none."""
-    match = _RATIO_TEXT_RE.search(text or "")
-    if not match:
-        return ""
-    left = match.group(1) or match.group(3)
-    right = match.group(2) or match.group(4)
-    try:
-        w, h = int(left), int(right)
-    except (TypeError, ValueError):
-        return ""
-    if w <= 0 or h <= 0:
-        return ""
-    g = gcd(w, h)
-    return f"{w // g}:{h // g}"
-
-
-def parse_guide_reply(
-    raw: str,
-    *,
-    requested_ratio: str = ADAPTIVE,
-    fallback_ratio: str = "",
-    user_text: str = "",
-    strict: bool = True,
-) -> Expansion:
-    """Parse one ``_guide``-mode reply.
-
-    The official skill's output format is a text block with the prompt,
-    followed by an ``Aspect ratio: W:H`` line. The line is taken from the
-    reply; the prompt is everything before it.
-
-    When the line is missing or unreadable, the ratio falls back to the
-    requested one, then to the reference image's own ratio (the editing
-    modes), and only then to ``adaptive``.
-    """
-    text = strip_reasoning(raw)
-    matches = list(_GUIDE_RATIO_RE.finditer(text))
-    warnings: list[str] = []
-    ratio = ""
-    if matches:
-        # The skill allows up to three variants, each with its own ratio.
-        # The node has ONE prompt output, so it keeps the first variant and
-        # says that the others were dropped -- it does not glue them
-        # together.
-        ratio = _ratio_from_text(matches[0].group(1))
-        text = text[: matches[0].start()].rstrip()
-        if len(matches) > 1:
-            warnings.append(
-                f"H3Image: the reply offers {len(matches)} variants; the node "
-                f"keeps the first one / 回复给了多个方案，节点只取第一个"
-            )
-        if not ratio:
-            warnings.append(
-                f"H3Image: the reply's ratio line "
-                f"({matches[0].group(1).strip()!r}) is not a W:H ratio / "
-                f"比例行无法解析"
-            )
-    else:
-        warnings.append(
-            "H3Image: the reply has no 'Aspect ratio: W:H' line / 回复缺少比例行"
-        )
-
-    caption = _FENCE_RE.sub(lambda m: m.group(1).strip(), text).strip()
-    if not caption:
-        raise H3ImageReplyError(
-            "H3Image: the guide reply carries no prompt text / 回复没有提示词正文"
-        )
-
-    normalized = _normalize_ratio_pair(ratio)
-    if normalized:
-        value = _ratio_value(normalized)
-        if not (GUIDE_RATIO_MIN <= value <= GUIDE_RATIO_MAX):
-            snapped = _snap_to_allowed(normalized)
-            warnings.append(
-                f"H3Image: the ratio {normalized} is outside the official "
-                f"1:3 - 3:1 range; using {snapped} / 比例超出官方范围"
-            )
-            ratio = snapped or normalized
-        else:
-            ratio = normalized
-    else:
-        wanted = _normalize_ratio_pair(requested_ratio)
-        ratio = (
-            wanted
-            or _normalize_ratio_pair(fallback_ratio)
-            or ADAPTIVE
-        )
-
-    lost = missing_literals(user_text, caption)
-    if lost:
-        message = (
-            f"H3Image: the prompt dropped {len(lost)} quoted literal(s) the "
-            f"user asked to keep: {'; '.join(repr(item) for item in lost)} / "
-            f"用户要求逐字保留的文字被改写"
-        )
-        if strict:
-            raise H3ImageReplyError(message)
-        warnings.append(message)
 
     return Expansion(
         caption=caption,

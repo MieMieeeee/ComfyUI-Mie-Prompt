@@ -110,14 +110,6 @@ def test_edit_task_prompt_must_not_be_formatted() -> None:
     assert "make it blue" in content[1]["text"]
 
 
-def test_the_guide_modes_send_the_draft_as_the_user_turn() -> None:
-    """The guide is the system prompt; the user turn is the brief."""
-    assert h3.build_user_message("t2i_guide", "a red cup") == "a red cup"
-    system = h3.build_system_prompt("t2i_guide")
-    assert "Text-to-image prompt writing guide" in system
-    assert "a red cup" not in system
-
-
 def test_allowed_ratios_match_the_official_request_params() -> None:
     """The code-side enum is the official enum."""
     params = h3.load_request_params()
@@ -134,13 +126,6 @@ def test_the_system_prompt_is_the_official_one() -> None:
     assert "expanded_caption and aspect_ratio" in system
     assert not system.endswith("\n")
     assert h3.build_system_prompt("t2i") == h3.build_system_prompt("edit")
-
-
-def test_the_guide_contract_is_lifted_from_the_official_skill() -> None:
-    """The output format comes from ``SKILL.md``, not from this module."""
-    contract = h3.load_guide_output_contract()
-    assert "Aspect ratio: 3:4" in contract
-    assert "between 1:3 and 3:1" in contract
 
 
 # --------------------------------------------------------------------------- #
@@ -399,61 +384,6 @@ def test_a_named_grid_is_accepted() -> None:
     assert not any("grid" in warning for warning in result.warnings)
 
 
-# --------------------------------------------------------------------------- #
-# The guide modes
-# --------------------------------------------------------------------------- #
-def test_the_guide_reply_is_split_into_prompt_and_ratio() -> None:
-    raw = (
-        "```text\nA red cup on a wooden table.\n```\n\nAspect ratio: 3:4"
-    )
-    result = h3.parse_guide_reply(raw)
-    assert result.caption == "A red cup on a wooden table."
-    assert result.aspect_ratio == "3:4"
-
-
-def test_a_guide_ratio_outside_the_official_range_is_reported() -> None:
-    raw = "A tall poster.\n\nAspect ratio: 1:6"
-    result = h3.parse_guide_reply(raw)
-    assert any("1:3" in warning for warning in result.warnings)
-
-
-def test_a_guide_ratio_line_may_carry_emphasis_or_a_period() -> None:
-    raw = "A tall poster.\n\n**Aspect ratio:** 1:6."
-    result = h3.parse_guide_reply(raw)
-    assert result.aspect_ratio != "adaptive"
-
-
-def test_a_guide_ratio_written_as_a_latex_fraction_is_read() -> None:
-    """Models do write ``\\frac{5}{4}`` -- it is still 5:4."""
-    raw = "A tall poster.\n\nAspect ratio: $ \\frac{5}{4} $"
-    result = h3.parse_guide_reply(raw)
-    assert result.aspect_ratio == "5:4"
-
-
-def test_a_guide_reply_without_a_ratio_line_falls_back_to_the_reference() -> None:
-    result = h3.parse_guide_reply(
-        "A tall poster.", fallback_ratio="16:9"
-    )
-    assert result.aspect_ratio == "16:9"
-    assert any("Aspect ratio" in warning for warning in result.warnings)
-
-
-def test_a_guide_reply_with_several_variants_keeps_the_first() -> None:
-    raw = (
-        "First variant.\n\nAspect ratio: 4:3\n\nSecond variant.\n\nAspect ratio: 1:1"
-    )
-    result = h3.parse_guide_reply(raw)
-    assert result.aspect_ratio == "4:3"
-    assert result.caption == "First variant."
-    assert any("variants" in warning for warning in result.warnings)
-
-
-def test_a_guide_reply_without_a_ratio_line_is_reported() -> None:
-    result = h3.parse_guide_reply("A tall poster.")
-    assert result.aspect_ratio == "adaptive"
-    assert any("Aspect ratio" in warning for warning in result.warnings)
-
-
 def test_text_outside_the_json_object_is_reported() -> None:
     result = h3.parse_expansion_reply(
         '{"expanded_caption": "A red cup.", "aspect_ratio": "4:3"} Hope this helps!'
@@ -475,15 +405,16 @@ def test_the_reference_ratio_is_computed_from_the_pixels() -> None:
 # The mode table
 # --------------------------------------------------------------------------- #
 def test_every_mode_maps_to_a_label_and_back() -> None:
-    assert len(h3.MODES) == len(h3.MODE_CODES) == 4
+    # 2026-11-22: the two _guide modes left the dropdown (user ruling:
+    # the mode axis is the task axis, t2i / edit).
+    assert len(h3.MODES) == len(h3.MODE_CODES) == 2
     for code, label in zip(h3.MODE_CODES, h3.MODES):
         assert h3.parse_mode(label) == code
         assert h3.load_task_prompt(code)
 
 
-def test_the_image_modes_are_the_two_edit_modes() -> None:
+def test_the_image_mode_is_the_edit_mode() -> None:
     assert h3.is_image_mode("edit")
-    assert h3.is_image_mode("edit_guide")
     assert not h3.is_image_mode("t2i")
 
 

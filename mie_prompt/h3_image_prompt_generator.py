@@ -5,7 +5,9 @@ H3-Image is the *image* model; its video sibling is the separate
 ``MiniMaxH3PromptGenerator`` node, and this one must not be confused with
 it.
 
-Four modes, one dropdown:
+Two modes, one dropdown -- the task axis mirrors the two official
+templates (there is no separate reference-generation template: the edit
+task natively takes the picture being edited plus up to 16 references):
 
 * ``t2i``        -- text-to-image. The short brief becomes an English
   caption **plus** an aspect ratio, delivered as one JSON object with two
@@ -16,9 +18,6 @@ Four modes, one dropdown:
   task prompt has NO placeholder, so the instruction and the ratio travel
   in the last text part of a multi-part user message, and every reference
   image is preceded by its own ``Reference Media: <Picture N> ...`` part.
-* ``t2i_guide``  -- the official prompt-writing skill: a free-text prompt
-  block plus an ``Aspect ratio: W:H`` line.
-* ``edit_guide`` -- the same skill for editing, with the reference images.
 
 The node owns three things the model does not:
 
@@ -30,7 +29,7 @@ The node owns three things the model does not:
   ratio, empty caption, dropped quoted text). The reply is never passed
   through raw.
 
-``edit`` / ``edit_guide`` need a vision-capable connector: the official
+``edit`` needs a vision-capable connector: the official
 prompt requires the model to look at the sources (``<Picture N>``,
 ``<Subject N>``, transcribed source text). A text-only connector would make
 the node invent what it supposedly saw, so the node refuses instead of
@@ -46,7 +45,7 @@ import hashlib
 import time
 from typing import Optional
 
-from mie_prompt.h3_image_prompts import ADAPTIVE, ALLOWED_T2I_RATIOS, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, GUIDE_MODES, IMAGE_MODES, MAX_REFERENCE_IMAGES, MODES, build_messages, image_ratio, is_image_mode, parse_expansion_reply, parse_guide_reply, parse_mode
+from mie_prompt.h3_image_prompts import ADAPTIVE, ALLOWED_T2I_RATIOS, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, IMAGE_MODES, MAX_REFERENCE_IMAGES, MODES, build_messages, image_ratio, is_image_mode, parse_expansion_reply, parse_mode
 from mie_llm.budget import invoke_with_budget_escalation
 from mie_llm.media import image_tensor_batch_to_data_urls
 from mie_llm.utils import mie_log
@@ -73,16 +72,6 @@ _CORRECTIVE_USER_TEXT = (
     "nothing else: no prose, no code fence, no thinking tags. The object has "
     "exactly two string keys: expanded_caption and aspect_ratio. Every word "
     "the user put in quotes must appear verbatim in expanded_caption."
-)
-
-# The guide modes do not answer with JSON -- they answer with the prompt in
-# a text block followed by an "Aspect ratio: W:H" line -- so their corrective
-# turn has to ask for that shape, not for a JSON object.
-_CORRECTIVE_USER_TEXT_GUIDE = (
-    "Your previous reply could not be used. Reply with the prompt in a text "
-    "block, followed by a line 'Aspect ratio: W:H' -- nothing else, no "
-    "thinking tags. Every word the user put in quotes must appear verbatim, "
-    "exactly as written."
 )
 
 
@@ -197,11 +186,7 @@ class H3ImagePromptEnhancer:
             aspect_ratio=aspect_ratio,
         )
         stage = f"enhance[{mode}]"
-        corrective = (
-            _CORRECTIVE_USER_TEXT_GUIDE
-            if mode in GUIDE_MODES
-            else _CORRECTIVE_USER_TEXT
-        )
+        corrective = _CORRECTIVE_USER_TEXT
         last_error: Optional[Exception] = None
         last_raw = ""
         for attempt in range(1, _MAX_PARSE_ATTEMPTS + 1):
@@ -252,28 +237,17 @@ class H3ImagePromptEnhancer:
     ) -> tuple[str, str, str]:
         """Parse and normalize the reply into ``(prompt, ratio, raw)``."""
         ratios = list(reference_ratios or [])
-        if mode in GUIDE_MODES:
-            result = parse_guide_reply(
-                raw,
-                requested_ratio=aspect_ratio,
-                # The editing guide keeps the input's framing when nothing
-                # asks for a change, so the reference's own ratio is the
-                # fallback when the reply has no usable ratio line.
-                fallback_ratio=ratios[0] if ratios else "",
-                user_text=user_text,
-            )
-        else:
-            result = parse_expansion_reply(
-                raw,
-                mode=mode,
-                requested_ratio=aspect_ratio,
-                # In adaptive mode the official edit prompt preserves the
-                # main reference's own ratio -- the node knows it, so the
-                # fallback is the reference ratio, not a blind 1:1.
-                fallback_ratio=ratios[0] if ratios else "",
-                user_text=user_text,
-                reference_count=len(image_urls or []),
-            )
+        result = parse_expansion_reply(
+            raw,
+            mode=mode,
+            requested_ratio=aspect_ratio,
+            # In adaptive mode the official edit prompt preserves the
+            # main reference's own ratio -- the node knows it, so the
+            # fallback is the reference ratio, not a blind 1:1.
+            fallback_ratio=ratios[0] if ratios else "",
+            user_text=user_text,
+            reference_count=len(image_urls or []),
+        )
         for warning in result.warnings:
             # The warnings already carry the "H3Image: " prefix.
             mie_log(warning)
@@ -288,10 +262,10 @@ class H3ImagePromptEnhancer:
         ratio = result.aspect_ratio
         # The user's choice wins over the model's. For t2i the value stays
         # inside the ten ratios the official PE may pick; for the edit
-        # modes any positive-integer W:H is legal.
+        # mode any positive-integer W:H is legal.
         wanted = (aspect_ratio or "").strip()
         if wanted and wanted.lower() != ADAPTIVE:
-            if mode in {"t2i", "t2i_guide"}:
+            if mode == "t2i":
                 if wanted in ALLOWED_T2I_RATIOS and ratio != wanted:
                     mie_log(
                         f"H3Image: the model returned {ratio}, the requested "
